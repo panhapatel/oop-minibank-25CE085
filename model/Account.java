@@ -1,6 +1,7 @@
 package model;
 
 import java.util.Objects;
+import exception.InsufficientBalanceException; 
 
 public class Account implements Comparable<Account> {
     private final String accountNumber;
@@ -36,21 +37,23 @@ public class Account implements Comparable<Account> {
     }
 
     public boolean withdraw(long amount) {
-        if (amount > 0 && balance >= amount) {
-            balance -= amount;
-            System.out.println("Withdrew ₹" + amount + ". Remaining Balance: ₹" + balance);
-            return true;
-        } else {
-            System.out.println("Withdrawal failed! Insufficient funds or invalid amount.");
+        if (amount <= 0) {
+            System.out.println("Invalid withdrawal amount!");
             return false;
         }
+        if (balance < amount) {
+            throw new InsufficientBalanceException("Withdrawal failed! Insufficient balance. Current Balance: ₹" + balance + ", Requested: ₹" + amount);
+        }
+        balance -= amount;
+        System.out.println("Withdrew ₹" + amount + ". Remaining Balance: ₹" + balance);
+        return true;
     }
-   @Override
+
+    @Override
     public String toString() {
         return accountNumber + " | " + ownerName + " | Balance: ₹" + balance + " | Active: " + active;
     }
 
-  
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

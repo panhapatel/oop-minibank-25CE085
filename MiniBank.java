@@ -2,6 +2,7 @@ import java.util.Scanner;
 import model.Customer;
 import model.Account;
 import util.Validator;
+import exception.InsufficientBalanceException;
 
 record BankInfo(String name, String branch) {}
 
@@ -16,31 +17,31 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
+
         System.out.println("\n--- Practical 3 Testing: Customer & Address ---");
         Customer.Address addr1 = new Customer.Address("10, MG Road", "Ahmedabad", "380001");
         Customer cust1 = new Customer("Riya Patel", "riya@gmail.com", "9876543210", addr1);
-        
-  
         System.out.println(cust1);
 
-    
         Customer cust2 = cust1.clone();
         System.out.println("Cloned Customer: " + cust2);
 
-        System.out.println("\n--- Practical 3 Testing: Account equals & hashCode ---");
+        System.out.println("\n--- Practical 3 & 4 Testing: Account & Validator ---");
         Account acc1 = new Account("Riya Patel", 5000);
         Account acc2 = new Account("Amit Shah", 3000);
-        Account acc3 = new Account("Riya Patel", 5000); // Different object, but let's check equality
+        System.out.println("Account 1: " + acc1);
+        System.out.println("Validator Test - Email (riya@gmail.com): " + Validator.isValidEmail("riya@gmail.com"));
+        System.out.println("Validator Test - Mobile (9876543210): " + Validator.isValidMobile("9876543210"));
+
+        System.out.println("\n--- Practical 5 Testing: InsufficientBalanceException ---");
+        Account testAcc = new Account("Test User", 1000);
+        try {
+            testAcc.withdraw(1500); 
+        } catch (InsufficientBalanceException e) {
+            System.out.println("Caught Expected Exception: " + e.getMessage());
+        }
 
         
-        System.out.println("Account 1: " + acc1);
-        System.out.println("Account 2: " + acc2);
-
-      
-        System.out.println("acc1 equals acc3 (different ref): " + acc1.equals(acc3));
-        System.out.println("acc1 hash: " + acc1.hashCode() + " | acc3 hash: " + acc3.hashCode());
-
-     
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
 
