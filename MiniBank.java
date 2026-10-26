@@ -1,10 +1,10 @@
 import java.util.Scanner;
 import model.Customer;
 import model.Account;
-import model.WithdrawRule; 
+import model.WithdrawRule;
 import util.Validator;
+import util.AnnotationValidator;
 import exception.InsufficientBalanceException;
-
 
 import static java.lang.Math.max;
 
@@ -21,37 +21,38 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-        System.out.println("\n--- Part B Testing: Interfaces & Interest ---");
+        System.out.println("\n--- Testing: Interfaces & Static Import ---");
         Account acc1 = new Account("Riya Patel", 10000);
         System.out.println(acc1);
-        
-     
         long bonus = max(500, 200);
-        System.out.println("Calculated Bonus (using static import Math.max): ₹" + bonus);
+        System.out.println("Calculated Bonus (Math.max): ₹" + bonus);
 
-        System.out.println("\n--- Part B Testing: WithdrawRule ---");
-        
-        
+        System.out.println("\n--- Testing: WithdrawRule ---");
         WithdrawRule atmRule = new WithdrawRule() {
             @Override
             public boolean allow(Account account, long amount) {
-                return account.getBalance() - amount >= 2000; 
+                return account.getBalance() - amount >= 2000;
             }
         };
-
         WithdrawRule onlineRule = (account, amount) -> account.getBalance() >= amount;
 
-     
         System.out.println("ATM Withdrawal Allowed (req ₹5000): " + atmRule.allow(acc1, 5000));
         System.out.println("Online Withdrawal Allowed (req ₹9000): " + onlineRule.allow(acc1, 9000));
 
-        System.out.println("\n--- Exception Handling Test ---");
-        try {
-            acc1.withdraw(15000); 
-        } catch (InsufficientBalanceException e) {
-            System.out.println("Caught Expected Exception: " + e.getMessage());
+        System.out.println("\n--- Testing: AnnotationValidator & Reflection ---");
+        Account invalidAcc = new Account("Test User", -500); // Negative balance to trigger @Positive
+        String[] validationErrors = AnnotationValidator.validate(invalidAcc);
+        
+        if (validationErrors.length > 0) {
+            System.out.println("Validation failed with errors:");
+            for (String err : validationErrors) {
+                System.out.println(" - " + err);
+            }
+        } else {
+            System.out.println("Validation passed successfully!");
         }
 
+        // Menu Loop
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
 

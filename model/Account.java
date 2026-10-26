@@ -2,11 +2,18 @@ package model;
 
 import java.util.Objects;
 import exception.InsufficientBalanceException;
+import model.annotation.Id;
+import model.annotation.Positive;
 
 public class Account implements Transactable, InterestBearing, Comparable<Account> {
+    @Id
     private final String accountNumber;
+    
     private String ownerName;
+    
+    @Positive(message = "must be > 0")
     private long balance;
+    
     private boolean active;
 
     private static long accountCounter = 0;
@@ -19,7 +26,7 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
     public Account(String ownerName, long openingBalance) {
         this.accountNumber = generateAccountNumber();
         this.ownerName = ownerName;
-        this.balance = openingBalance > 0 ? openingBalance : 0;
+        this.balance = openingBalance; 
         this.active = true;
     }
 
@@ -54,12 +61,12 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
   
     @Override
     public double interestRate() {
-        return 4.5; // Standard 4.5% interest rate
+        return 4.5;
     }
 
     @Override
     public String toString() {
-        return accountNumber + " | " + ownerName + " | Balance: ₹" + balance + " | Yearly Interest: ₹" + yearlyInterest();
+        return accountNumber + " | " + ownerName + " | Balance: ₹" + balance + " | Active: " + active;
     }
 
     @Override
@@ -79,6 +86,7 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
     public int compareTo(Account other) {
         return this.accountNumber.compareTo(other.accountNumber);
     }
+
 
     public String getAccountNumber() { return accountNumber; }
     public String getOwnerName() { return ownerName; }
