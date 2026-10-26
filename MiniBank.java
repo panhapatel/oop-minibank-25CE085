@@ -1,6 +1,7 @@
 import java.util.Scanner;
 import model.Customer;
 import model.Account;
+import util.Validator;
 
 record BankInfo(String name, String branch) {}
 
