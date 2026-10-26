@@ -1,4 +1,6 @@
 import java.util.Scanner;
+import model.Customer;
+import model.Account;
 
 record BankInfo(String name, String branch) {}
 
@@ -12,6 +14,24 @@ public class MiniBank {
         System.out.println("==========================================");
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
+
+        // Practical 2 Testing with Separate Classes
+        System.out.println("\n--- Practical 2 Testing: Accounts & Encapsulation ---");
+        Account[] accounts = {
+            new Account("Riya", 5000),
+            new Account("Amit", 2000),
+            new Account("Priya")
+        };
+
+        System.out.println("\n[Testing Account Operations on Riya's Account]");
+        accounts[0].deposit(2000);   
+        accounts[0].withdraw(3000);  
+        accounts[0].withdraw(10000); 
+
+        System.out.println("\n[Account Balances Summary]");
+        for (Account acc : accounts) {
+            System.out.println("Account: " + acc.getAccountNumber() + " | Owner: " + acc.getOwnerName() + " | Balance: ₹" + acc.getBalance());
+        }
 
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
@@ -53,7 +73,7 @@ public class MiniBank {
 
             } else {
                 System.out.println("Invalid input! Please enter a valid number.");
-                scanner.next(); 
+                scanner.next();
             }
 
         } while (choice != MenuOption.EXIT);
