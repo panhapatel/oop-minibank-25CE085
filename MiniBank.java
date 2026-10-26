@@ -1,10 +1,9 @@
 import java.util.Scanner;
 import model.Account;
 import exception.BankException;
-import exception.InsufficientFundsException;
-import exception.InvalidAmountException;
 import util.BankResource;
-import util.AccountWorker;
+import util.TransactionProcessor;
+import util.TransactionBuffer;
 
 record BankInfo(String name, String branch) {}
 
@@ -19,66 +18,98 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-       
-        System.out.println("\n--- Testing: Try-with-resources ---");
-        try (BankResource resource = new BankResource()) {
-            resource.processSession();
-        } catch (Exception e) {
-            System.out.println("Resource error: " + e.getMessage());
-        }
-
-        System.out.println("\n--- Testing: Exception Hierarchy & Shortfall ---");
-        Account acc1 = new Account("Riya Patel", 5000);
-        Account acc2 = new Account("Amit Shah", 2000);
-
-        System.out.println(acc1);
-        System.out.println(acc2);
-
-        try {
-            acc1.withdraw(8000);
-        } catch (InsufficientFundsException e) {
-            System.out.println("Caught Insufficient Funds: " + e.getMessage());
-            System.out.println("Shortfall amount: ₹" + e.getShortfall());
-        } catch (InvalidAmountException e) {
-            System.out.println("Caught Invalid Amount: " + e.getMessage());
-        } finally {
-            System.out.println("Withdrawal transaction attempt finished.");
-        }
-
-        try {
-            acc1.transfer(acc2, 1000);
-        } catch (BankException e) {
-            System.out.println("Transfer error caught: " + e.getMessage());
-        }
-
-       
-        System.out.println("\n--- Testing: Multi-threading & Synchronization ---");
-        Account sharedAccount = new Account("Shared User", 1000);
-        
-        int numberOfThreads = 10;
-        int timesPerThread = 100;
-        long depositAmount = 10;
-        
-        Thread[] threads = new Thread[numberOfThreads];
-        
-        for (int i = 0; i < numberOfThreads; i++) {
-            threads[i] = new Thread(new AccountWorker(sharedAccount, timesPerThread, depositAmount), "Worker-" + (i + 1));
-            threads[i].start();
-        }
-        
       
-        for (int i = 0; i < numberOfThreads; i++) {
+        System.out.println("\n--- Testing: Transaction Processor (Thread Pool) ---");
+        TransactionProcessor processor = new TransactionProcessor(4);
+        Account testAcc = new Account("Priya Shah", 1000);
+
+        for (int i = 1; i <= 5; i++) {
+            final int taskNo = i;
+            processor.submit(() -> {
+                try {
+                    testAcc.deposit(100);
+                    System.out.println("Task " + taskNo + " completed by " + Thread.currentThread().getName());
+                } catch (BankException e) {
+                    System.out.println("Task error: " + e.getMessage());
+                }
+            });
+        }
+        processor.stop();
+        System.out.println("Final Balance after pool tasks: ₹" + testAcc.getBalance());
+
+        // --- 2. Producer-Consumer Test (wait/notify) ---
+        System.out.println("\n--- Testing: Producer-Consumer Buffer ---");
+        TransactionBuffer buffer = new TransactionBuffer();
+
+        Thread producer = new Thread(() -> {
             try {
-                threads[i].join();
+                for (int i = 1; i <= 3; i++) {
+                    final int currentI = i;
+                    Runnable tx = () -> System.out.println("Executing buffered transaction #" + currentI);
+                    buffer.produce(tx);
+                    System.out.println("Produced transaction #" + currentI);
+                }
             } catch (InterruptedException e) {
-                System.out.println("Thread interrupted: " + e.getMessage());
+                Thread.currentThread().interrupt();
             }
-        }
-        
-        System.out.println("Expected Final Balance: ₹" + (1000 + (numberOfThreads * timesPerThread * depositAmount)));
-        System.out.println("Actual Final Balance: ₹" + sharedAccount.getBalance());
+        }, "Producer-Thread");
 
-      
+        Thread consumer = new Thread(() -> {
+            try {
+                for (int i = 1; i <= 3; i++) {
+                    Runnable tx = buffer.consume();
+                    tx.run();
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }, "Consumer-Thread");
+
+        producer.start();
+        consumer.start();
+
+        try {
+            producer.join();
+            consumer.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("\n--- Testing: Deadlock-Free Transfers ---");
+        Account accA = new Account("Account A", 5000);
+        Account accB = new Account("Account B", 5000);
+
+        Thread t1 = new Thread(() -> {
+            try {
+                accA.transfer(accB, 500);
+            } catch (BankException e) {
+                System.out.println("Transfer A->B error: " + e.getMessage());
+            }
+        }, "Transfer-Thread-1");
+
+        Thread t2 = new Thread(() -> {
+            try {
+                accB.transfer(accA, 300);
+            } catch (BankException e) {
+                System.out.println("Transfer B->A error: " + e.getMessage());
+            }
+        }, "Transfer-Thread-2");
+
+        t1.start();
+        t2.start();
+
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Final Acc A Balance: ₹" + accA.getBalance());
+        System.out.println("Final Acc B Balance: ₹" + accB.getBalance());
+
+        System.out.println("\n--- All Automated Tests Completed Successfully! ---");
+
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
 

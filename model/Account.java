@@ -36,13 +36,12 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
         this(ownerName, 0);
     }
 
-   @Override
+    @Override
     public synchronized void deposit(long amount) throws InvalidAmountException {
         if (amount <= 0) {
             throw new InvalidAmountException("Deposit amount must be greater than zero.");
         }
         balance += amount;
-        System.out.println("Deposited ₹" + amount + ". New Balance: ₹" + balance);
     }
 
     @Override
@@ -55,21 +54,26 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
             throw new InsufficientFundsException("Insufficient funds for withdrawal.", shortfall);
         }
         balance -= amount;
-        System.out.println("Withdrew ₹" + amount + ". Remaining Balance: ₹" + balance);
         return true;
     }
 
+
     public void transfer(Account targetAccount, long amount) throws BankException {
-        System.out.println("Initiating transfer of ₹" + amount + " to " + targetAccount.getAccountNumber() + "...");
-        try {
-            this.withdraw(amount);
-            targetAccount.deposit(amount);
-            System.out.println("Transfer successful!");
-        } catch (BankException e) {
-            System.out.println("Transfer failed during process. Rolling back/handling...");
-            throw new BankException("Transfer error: " + e.getMessage());
-        } finally {
-            System.out.println("Transfer transaction audit log completed.");
+        if (this.equals(targetAccount)) {
+            throw new BankException("Cannot transfer to the same account.");
+        }
+
+        
+        Account firstLock = this.accountNumber.compareTo(targetAccount.accountNumber) < 0 ? this : targetAccount;
+        Account secondLock = this.accountNumber.compareTo(targetAccount.accountNumber) < 0 ? targetAccount : this;
+
+        synchronized (firstLock) {
+            synchronized (secondLock) {
+                System.out.println("Transferring ₹" + amount + " from " + this.accountNumber + " to " + targetAccount.accountNumber);
+                this.withdraw(amount);
+                targetAccount.deposit(amount);
+                System.out.println("Transfer successful!");
+            }
         }
     }
 
