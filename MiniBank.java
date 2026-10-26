@@ -15,24 +15,31 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-        // Practical 2 Testing with Separate Classes
-        System.out.println("\n--- Practical 2 Testing: Accounts & Encapsulation ---");
-        Account[] accounts = {
-            new Account("Riya", 5000),
-            new Account("Amit", 2000),
-            new Account("Priya")
-        };
+        System.out.println("\n--- Practical 3 Testing: Customer & Address ---");
+        Customer.Address addr1 = new Customer.Address("10, MG Road", "Ahmedabad", "380001");
+        Customer cust1 = new Customer("Riya Patel", "riya@gmail.com", "9876543210", addr1);
+        
+  
+        System.out.println(cust1);
 
-        System.out.println("\n[Testing Account Operations on Riya's Account]");
-        accounts[0].deposit(2000);   
-        accounts[0].withdraw(3000);  
-        accounts[0].withdraw(10000); 
+    
+        Customer cust2 = cust1.clone();
+        System.out.println("Cloned Customer: " + cust2);
 
-        System.out.println("\n[Account Balances Summary]");
-        for (Account acc : accounts) {
-            System.out.println("Account: " + acc.getAccountNumber() + " | Owner: " + acc.getOwnerName() + " | Balance: ₹" + acc.getBalance());
-        }
+        System.out.println("\n--- Practical 3 Testing: Account equals & hashCode ---");
+        Account acc1 = new Account("Riya Patel", 5000);
+        Account acc2 = new Account("Amit Shah", 3000);
+        Account acc3 = new Account("Riya Patel", 5000); // Different object, but let's check equality
 
+        
+        System.out.println("Account 1: " + acc1);
+        System.out.println("Account 2: " + acc2);
+
+      
+        System.out.println("acc1 equals acc3 (different ref): " + acc1.equals(acc3));
+        System.out.println("acc1 hash: " + acc1.hashCode() + " | acc3 hash: " + acc3.hashCode());
+
+     
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
 
