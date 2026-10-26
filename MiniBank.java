@@ -1,12 +1,9 @@
 import java.util.Scanner;
-import model.Customer;
 import model.Account;
-import model.WithdrawRule;
-import util.Validator;
-import util.AnnotationValidator;
-import exception.InsufficientBalanceException;
-
-import static java.lang.Math.max;
+import exception.BankException;
+import exception.InsufficientFundsException;
+import exception.InvalidAmountException;
+import util.BankResource;
 
 record BankInfo(String name, String branch) {}
 
@@ -21,38 +18,45 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-        System.out.println("\n--- Testing: Interfaces & Static Import ---");
-        Account acc1 = new Account("Riya Patel", 10000);
-        System.out.println(acc1);
-        long bonus = max(500, 200);
-        System.out.println("Calculated Bonus (Math.max): ₹" + bonus);
-
-        System.out.println("\n--- Testing: WithdrawRule ---");
-        WithdrawRule atmRule = new WithdrawRule() {
-            @Override
-            public boolean allow(Account account, long amount) {
-                return account.getBalance() - amount >= 2000;
-            }
-        };
-        WithdrawRule onlineRule = (account, amount) -> account.getBalance() >= amount;
-
-        System.out.println("ATM Withdrawal Allowed (req ₹5000): " + atmRule.allow(acc1, 5000));
-        System.out.println("Online Withdrawal Allowed (req ₹9000): " + onlineRule.allow(acc1, 9000));
-
-        System.out.println("\n--- Testing: AnnotationValidator & Reflection ---");
-        Account invalidAcc = new Account("Test User", -500); // Negative balance to trigger @Positive
-        String[] validationErrors = AnnotationValidator.validate(invalidAcc);
         
-        if (validationErrors.length > 0) {
-            System.out.println("Validation failed with errors:");
-            for (String err : validationErrors) {
-                System.out.println(" - " + err);
-            }
-        } else {
-            System.out.println("Validation passed successfully!");
+        System.out.println("\n--- Testing: Try-with-resources ---");
+        try (BankResource resource = new BankResource()) {
+            resource.processSession();
+        } catch (Exception e) {
+            System.out.println("Resource error: " + e.getMessage());
         }
 
-        // Menu Loop
+      
+        System.out.println("\n--- Testing: Exception Hierarchy & Shortfall ---");
+        Account acc1 = new Account("Riya Patel", 5000);
+        Account acc2 = new Account("Amit Shah", 2000);
+
+        System.out.println(acc1);
+        System.out.println(acc2);
+
+     
+        try {
+            acc1.withdraw(8000); 
+        } catch (InsufficientFundsException e) {
+            System.out.println("Caught Insufficient Funds: " + e.getMessage());
+            System.out.println("Shortfall amount: ₹" + e.getShortfall());
+        } catch (InvalidAmountException e) {
+            System.out.println("Caught Invalid Amount: " + e.getMessage());
+        } finally {
+            System.out.println("Withdrawal transaction attempt finished (finally block executed).");
+        }
+
+      
+        System.out.println("\n--- Testing: Transfer with try-catch-finally ---");
+        try {
+            acc1.transfer(acc2, 1000);
+        } catch (BankException e) {
+            System.out.println("Transfer error caught: " + e.getMessage());
+        }
+
+        System.out.println("\nMilestone 1 checkpoint completed successfully!");
+
+       
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
 
