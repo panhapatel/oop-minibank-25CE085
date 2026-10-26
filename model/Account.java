@@ -1,9 +1,9 @@
 package model;
 
 import java.util.Objects;
-import exception.InsufficientBalanceException; 
+import exception.InsufficientBalanceException;
 
-public class Account implements Comparable<Account> {
+public class Account implements Transactable, InterestBearing, Comparable<Account> {
     private final String accountNumber;
     private String ownerName;
     private long balance;
@@ -27,6 +27,7 @@ public class Account implements Comparable<Account> {
         this(ownerName, 0);
     }
 
+    @Override
     public void deposit(long amount) {
         if (amount > 0) {
             balance += amount;
@@ -36,22 +37,29 @@ public class Account implements Comparable<Account> {
         }
     }
 
+    @Override
     public boolean withdraw(long amount) {
         if (amount <= 0) {
             System.out.println("Invalid withdrawal amount!");
             return false;
         }
         if (balance < amount) {
-            throw new InsufficientBalanceException("Withdrawal failed! Insufficient balance. Current Balance: ₹" + balance + ", Requested: ₹" + amount);
+            throw new InsufficientBalanceException("Withdrawal failed! Insufficient balance.");
         }
         balance -= amount;
         System.out.println("Withdrew ₹" + amount + ". Remaining Balance: ₹" + balance);
         return true;
     }
 
+  
+    @Override
+    public double interestRate() {
+        return 4.5; // Standard 4.5% interest rate
+    }
+
     @Override
     public String toString() {
-        return accountNumber + " | " + ownerName + " | Balance: ₹" + balance + " | Active: " + active;
+        return accountNumber + " | " + ownerName + " | Balance: ₹" + balance + " | Yearly Interest: ₹" + yearlyInterest();
     }
 
     @Override
@@ -72,7 +80,6 @@ public class Account implements Comparable<Account> {
         return this.accountNumber.compareTo(other.accountNumber);
     }
 
-  
     public String getAccountNumber() { return accountNumber; }
     public String getOwnerName() { return ownerName; }
     public long getBalance() { return balance; }

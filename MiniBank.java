@@ -1,8 +1,12 @@
 import java.util.Scanner;
 import model.Customer;
 import model.Account;
+import model.WithdrawRule; 
 import util.Validator;
 import exception.InsufficientBalanceException;
+
+
+import static java.lang.Math.max;
 
 record BankInfo(String name, String branch) {}
 
@@ -17,31 +21,37 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
+        System.out.println("\n--- Part B Testing: Interfaces & Interest ---");
+        Account acc1 = new Account("Riya Patel", 10000);
+        System.out.println(acc1);
+        
+     
+        long bonus = max(500, 200);
+        System.out.println("Calculated Bonus (using static import Math.max): ₹" + bonus);
 
-        System.out.println("\n--- Practical 3 Testing: Customer & Address ---");
-        Customer.Address addr1 = new Customer.Address("10, MG Road", "Ahmedabad", "380001");
-        Customer cust1 = new Customer("Riya Patel", "riya@gmail.com", "9876543210", addr1);
-        System.out.println(cust1);
+        System.out.println("\n--- Part B Testing: WithdrawRule ---");
+        
+        
+        WithdrawRule atmRule = new WithdrawRule() {
+            @Override
+            public boolean allow(Account account, long amount) {
+                return account.getBalance() - amount >= 2000; 
+            }
+        };
 
-        Customer cust2 = cust1.clone();
-        System.out.println("Cloned Customer: " + cust2);
+        WithdrawRule onlineRule = (account, amount) -> account.getBalance() >= amount;
 
-        System.out.println("\n--- Practical 3 & 4 Testing: Account & Validator ---");
-        Account acc1 = new Account("Riya Patel", 5000);
-        Account acc2 = new Account("Amit Shah", 3000);
-        System.out.println("Account 1: " + acc1);
-        System.out.println("Validator Test - Email (riya@gmail.com): " + Validator.isValidEmail("riya@gmail.com"));
-        System.out.println("Validator Test - Mobile (9876543210): " + Validator.isValidMobile("9876543210"));
+     
+        System.out.println("ATM Withdrawal Allowed (req ₹5000): " + atmRule.allow(acc1, 5000));
+        System.out.println("Online Withdrawal Allowed (req ₹9000): " + onlineRule.allow(acc1, 9000));
 
-        System.out.println("\n--- Practical 5 Testing: InsufficientBalanceException ---");
-        Account testAcc = new Account("Test User", 1000);
+        System.out.println("\n--- Exception Handling Test ---");
         try {
-            testAcc.withdraw(1500); 
+            acc1.withdraw(15000); 
         } catch (InsufficientBalanceException e) {
             System.out.println("Caught Expected Exception: " + e.getMessage());
         }
 
-        
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
 
@@ -66,25 +76,23 @@ public class MiniBank {
                 };
 
                 if (choice == null) {
-                    System.out.println("Invalid choice! Please enter a number between 1 and 5.");
+                    System.out.println("Invalid choice! Please enter 1-5.");
                     continue;
                 }
 
-                String placeholderResponse = switch (choice) {
-                    case OPEN_ACCOUNT -> "Open Account to be implemented in a later lab.";
-                    case DEPOSIT -> "Deposit to be implemented in a later lab.";
-                    case WITHDRAW -> "Withdraw to be implemented in a later lab.";
-                    case TRANSFER -> "Transfer to be implemented in a later lab.";
-                    case EXIT -> "Thank you for using MiniBank. Goodbye!";
+                String msg = switch (choice) {
+                    case OPEN_ACCOUNT -> "Open Account feature.";
+                    case DEPOSIT -> "Deposit feature.";
+                    case WITHDRAW -> "Withdraw feature.";
+                    case TRANSFER -> "Transfer feature.";
+                    case EXIT -> "Thank you for using MiniBank!";
                 };
-
-                System.out.println(">> " + placeholderResponse);
+                System.out.println(">> " + msg);
 
             } else {
-                System.out.println("Invalid input! Please enter a valid number.");
+                System.out.println("Invalid input!");
                 scanner.next();
             }
-
         } while (choice != MenuOption.EXIT);
 
         scanner.close();
