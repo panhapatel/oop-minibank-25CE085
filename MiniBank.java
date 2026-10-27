@@ -1,20 +1,17 @@
 import java.util.Scanner;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import model.Account;
 import exception.BankException;
-import util.TransactionProcessor;
-import util.TransactionBuffer;
+import util.Repository;
 import util.StatePersister;
 import util.TransactionLog;
 import util.ReportGenerator;
-import util.AccountStore;
-import util.Repository;
+import service.BankService;
 
 record BankInfo(String name, String branch) {}
 
 enum MenuOption {
-    OPEN_ACCOUNT, DEPOSIT, WITHDRAW, TRANSFER, EXIT
+    OPEN_ACCOUNT, DEPOSIT, WITHDRAW, TRANSFER, LIST_ACCOUNTS, GENERATE_REPORT, EXIT
 }
 
 public class MiniBank {
@@ -24,31 +21,24 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-        System.out.println("\n--- Testing: Generic Repository & Reflection ---");
-        Repository<Account> accountRepo = new Repository<>();
-        
-        Account rAcc1 = new Account("Kiran", 4000);
-        Account rAcc2 = new Account("Neha", 8500);
-        
-        accountRepo.saveAll(rAcc1, rAcc2);
+        Path stateFile = Path.of("bank_state.dat");
+        Path logsDir = Path.of("logs");
+        Path reportFile = Path.of("eod_report.txt");
 
-        String searchId = rAcc1.getAccountNumber();
-        Account fetched = accountRepo.findById(searchId);
-        System.out.println("Fetched by ID (" + searchId + "): " + fetched);
+        Repository<Account> repository = new Repository<>();
 
-        System.out.println("All accounts in Repository:");
-        for (Account acc : accountRepo.findAll()) {
-            System.out.println(" -> " + acc);
+        if (java.nio.file.Files.exists(stateFile)) {
+            try {
+                Account[] loaded = StatePersister.load(stateFile);
+                repository.saveAll(loaded);
+                System.out.println(">> Successfully loaded previous account states from file.");
+            } catch (Exception e) {
+                System.out.println(">> Load error: " + e.getMessage());
+            }
         }
 
-        Double[] balances = {4000.0, 8500.0, 1500.0};
-        System.out.println("Average Balance via generic method: ₹" + Repository.average(balances));
-
+        BankService bankService = new BankService(repository);
         Scanner scanner = new Scanner(System.in);
-        AccountStore store = new AccountStore();
-        store.add(rAcc1);
-        store.add(rAcc2);
-
         MenuOption choice = null;
 
         do {
@@ -57,8 +47,10 @@ public class MiniBank {
             System.out.println("2. Deposit");
             System.out.println("3. Withdraw");
             System.out.println("4. Transfer");
-            System.out.println("5. Exit");
-            System.out.print("\nEnter your choice (1-5): ");
+            System.out.println("5. List All Accounts");
+            System.out.println("6. Generate EOD Report");
+            System.out.println("7. Exit");
+            System.out.print("\nEnter your choice (1-7): ");
 
             if (scanner.hasNextInt()) {
                 int optionNum = scanner.nextInt();
@@ -69,12 +61,14 @@ public class MiniBank {
                     case 2 -> MenuOption.DEPOSIT;
                     case 3 -> MenuOption.WITHDRAW;
                     case 4 -> MenuOption.TRANSFER;
-                    case 5 -> MenuOption.EXIT;
+                    case 5 -> MenuOption.LIST_ACCOUNTS;
+                    case 6 -> MenuOption.GENERATE_REPORT;
+                    case 7 -> MenuOption.EXIT;
                     default -> null;
                 };
 
                 if (choice == null) {
-                    System.out.println("Invalid choice! Please enter 1-5.");
+                    System.out.println("Invalid choice! Please enter 1-7.");
                     continue;
                 }
 
@@ -83,68 +77,66 @@ public class MiniBank {
                         case OPEN_ACCOUNT -> {
                             System.out.print("Enter Owner Name: ");
                             String name = scanner.nextLine();
-                            System.out.print("Enter Initial Deposit Amount (₹): ");
+                            System.out.print("Enter Initial Deposit (₹): ");
                             long amount = scanner.nextLong();
                             scanner.nextLine();
 
-                            Account newAcc = new Account(name, amount);
-                            store.add(newAcc);
-                            accountRepo.save(newAcc);
-                            System.out.println(">> Success! Account Created & Saved to Repository: " + newAcc);
+                            Account acc = bankService.openAccount(name, amount);
+                            System.out.println(">> Success! Created Account: " + acc);
                         }
                         case DEPOSIT -> {
-                            System.out.print("Enter Account Number (e.g., AC0001): ");
+                            System.out.print("Enter Account Number: ");
                             String accNum = scanner.nextLine();
-                            Account target = store.get(accNum);
-                            if (target != null) {
-                                System.out.print("Enter Deposit Amount (₹): ");
-                                long amt = scanner.nextLong();
-                                scanner.nextLine();
-                                target.deposit(amt);
-                                System.out.println(">> Deposited successfully! New Balance: ₹" + target.getBalance());
-                            } else {
-                                System.out.println(">> Error: Account not found!");
-                            }
+                            System.out.print("Enter Deposit Amount (₹): ");
+                            long amount = scanner.nextLong();
+                            scanner.nextLine();
+
+                            bankService.deposit(accNum, amount);
+                            TransactionLog.append(logsDir.resolve("tx_day1.log"), "DEPOSIT: ₹" + amount + " to " + accNum);
+                            System.out.println(">> Deposit successful!");
                         }
                         case WITHDRAW -> {
-                            System.out.print("Enter Account Number (e.g., AC0001): ");
+                            System.out.print("Enter Account Number: ");
                             String accNum = scanner.nextLine();
-                            Account target = store.get(accNum);
-                            if (target != null) {
-                                System.out.print("Enter Withdrawal Amount (₹): ");
-                                long amt = scanner.nextLong();
-                                scanner.nextLine();
-                                target.withdraw(amt);
-                                System.out.println(">> Withdrawn successfully! Remaining Balance: ₹" + target.getBalance());
-                            } else {
-                                System.out.println(">> Error: Account not found!");
-                            }
+                            System.out.print("Enter Withdrawal Amount (₹): ");
+                            long amount = scanner.nextLong();
+                            scanner.nextLine();
+
+                            bankService.withdraw(accNum, amount);
+                            TransactionLog.append(logsDir.resolve("tx_day1.log"), "WITHDRAW: ₹" + amount + " from " + accNum);
+                            System.out.println(">> Withdrawal successful!");
                         }
                         case TRANSFER -> {
                             System.out.print("Enter Source Account Number: ");
-                            String srcNum = scanner.nextLine();
+                            String src = scanner.nextLine();
                             System.out.print("Enter Target Account Number: ");
-                            String tgtNum = scanner.nextLine();
-                            
-                            Account srcAcc = store.get(srcNum);
-                            Account tgtAcc = store.get(tgtNum);
+                            String tgt = scanner.nextLine();
+                            System.out.print("Enter Transfer Amount (₹): ");
+                            long amount = scanner.nextLong();
+                            scanner.nextLine();
 
-                            if (srcAcc != null && tgtAcc != null) {
-                                System.out.print("Enter Transfer Amount (₹): ");
-                                long amt = scanner.nextLong();
-                                scanner.nextLine();
-                                srcAcc.transfer(tgtAcc, amt);
-                                System.out.println(">> Transfer completed successfully!");
-                            } else {
-                                System.out.println(">> Error: One or both accounts not found!");
+                            bankService.transfer(src, tgt, amount);
+                            TransactionLog.append(logsDir.resolve("tx_day1.log"), "TRANSFER: ₹" + amount + " from " + src + " to " + tgt);
+                            System.out.println(">> Transfer successful!");
+                        }
+                        case LIST_ACCOUNTS -> {
+                            System.out.println("\n--- All Accounts ---");
+                            for (Account acc : bankService.listAccounts()) {
+                                System.out.println(" -> " + acc);
                             }
                         }
+                        case GENERATE_REPORT -> {
+                            ReportGenerator.generateReport(logsDir, reportFile);
+                        }
                         case EXIT -> {
-                            System.out.println(">> Thank you for using MiniBank. Goodbye!");
+                          
+                            var allAccs = bankService.listAccounts().toArray(new Account[0]);
+                            StatePersister.save(allAccs, stateFile);
+                            System.out.println(">> Accounts saved securely. Thank you for using MiniBank!");
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println(">> Transaction Error: " + e.getMessage());
+                    System.out.println(">> Error: " + e.getMessage());
                 }
 
             } else {
