@@ -1,0 +1,3 @@
+=== END OF DAY SUMMARY REPORT ===
+Total Deposits: ₹0
+Total Withdrawals: ₹0

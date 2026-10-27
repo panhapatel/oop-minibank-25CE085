@@ -1,6 +1,7 @@
 package model;
 
 import java.util.Objects;
+import java.io.Serializable;
 import exception.BankException;
 import exception.InsufficientFundsException;
 import exception.InvalidAmountException;
@@ -8,6 +9,7 @@ import model.annotation.Id;
 import model.annotation.Positive;
 
 public class Account implements Transactable, InterestBearing, Comparable<Account> {
+    private static final long serialVersionUID = 1L;
     @Id
     private final String accountNumber;
     

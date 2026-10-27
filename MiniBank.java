@@ -1,9 +1,13 @@
 import java.util.Scanner;
+import java.nio.file.Path;
 import model.Account;
 import exception.BankException;
 import util.BankResource;
 import util.TransactionProcessor;
 import util.TransactionBuffer;
+import util.StatePersister;
+import util.TransactionLog;
+import util.ReportGenerator;
 
 record BankInfo(String name, String branch) {}
 
@@ -18,7 +22,6 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-      
         System.out.println("\n--- Testing: Transaction Processor (Thread Pool) ---");
         TransactionProcessor processor = new TransactionProcessor(4);
         Account testAcc = new Account("Priya Shah", 1000);
@@ -37,7 +40,6 @@ public class MiniBank {
         processor.stop();
         System.out.println("Final Balance after pool tasks: ₹" + testAcc.getBalance());
 
-        // --- 2. Producer-Consumer Test (wait/notify) ---
         System.out.println("\n--- Testing: Producer-Consumer Buffer ---");
         TransactionBuffer buffer = new TransactionBuffer();
 
@@ -108,7 +110,45 @@ public class MiniBank {
         System.out.println("Final Acc A Balance: ₹" + accA.getBalance());
         System.out.println("Final Acc B Balance: ₹" + accB.getBalance());
 
-        System.out.println("\n--- All Automated Tests Completed Successfully! ---");
+
+        System.out.println("\n--- Testing: Persistence & Reporting ---");
+        Path stateFile = Path.of("bank_state.dat");
+        Path logsDir = Path.of("logs");
+        Path reportFile = Path.of("eod_report.txt");
+
+   
+        Account[] accountsToSave = { accA, accB };
+        try {
+            StatePersister.save(accountsToSave, stateFile);
+        } catch (Exception e) {
+            System.out.println("Save error: " + e.getMessage());
+        }
+
+   
+        try {
+            TransactionLog.append(logsDir.resolve("tx_day1.log"), "DEPOSIT: ₹500 to AC0001");
+            TransactionLog.append(logsDir.resolve("tx_day1.log"), "WITHDRAW: ₹200 from AC0002");
+        } catch (Exception e) {
+            System.out.println("Log error: " + e.getMessage());
+        }
+
+        try {
+            Account[] reloadedAccounts = StatePersister.load(stateFile);
+            System.out.println("Reloaded Accounts from file:");
+            for (Account acc : reloadedAccounts) {
+                System.out.println(" -> " + acc);
+            }
+        } catch (Exception e) {
+            System.out.println("Load error: " + e.getMessage());
+        }
+
+        try {
+            ReportGenerator.generateReport(logsDir, reportFile);
+        } catch (Exception e) {
+            System.out.println("Report error: " + e.getMessage());
+        }
+
+        System.out.println("\n--- All Automated Tests & Reporting Completed! ---");
 
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
