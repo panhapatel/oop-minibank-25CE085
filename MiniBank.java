@@ -1,5 +1,6 @@
 import java.util.Scanner;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import model.Account;
 import exception.BankException;
 import util.TransactionProcessor;
@@ -8,6 +9,7 @@ import util.StatePersister;
 import util.TransactionLog;
 import util.ReportGenerator;
 import util.AccountStore;
+import util.Repository;
 
 record BankInfo(String name, String branch) {}
 
@@ -22,150 +24,31 @@ public class MiniBank {
         System.out.println("Welcome to " + bankInfo.name() + " (" + bankInfo.branch() + ")");
         System.out.println("==========================================");
 
-        System.out.println("\n--- Testing: Transaction Processor (Thread Pool) ---");
-        TransactionProcessor processor = new TransactionProcessor(4);
-        Account testAcc = new Account("Priya Shah", 1000);
-
-        for (int i = 1; i <= 5; i++) {
-            final int taskNo = i;
-            processor.submit(() -> {
-                try {
-                    testAcc.deposit(100);
-                    System.out.println("Task " + taskNo + " completed by " + Thread.currentThread().getName());
-                } catch (BankException e) {
-                    System.out.println("Task error: " + e.getMessage());
-                }
-            });
-        }
-        processor.stop();
-        System.out.println("Final Balance after pool tasks: ₹" + testAcc.getBalance());
-
-        System.out.println("\n--- Testing: Producer-Consumer Buffer ---");
-        TransactionBuffer buffer = new TransactionBuffer();
-
-        Thread producer = new Thread(() -> {
-            try {
-                for (int i = 1; i <= 3; i++) {
-                    final int currentI = i;
-                    Runnable tx = () -> System.out.println("Executing buffered transaction #" + currentI);
-                    buffer.produce(tx);
-                    System.out.println("Produced transaction #" + currentI);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }, "Producer-Thread");
-
-        Thread consumer = new Thread(() -> {
-            try {
-                for (int i = 1; i <= 3; i++) {
-                    Runnable tx = buffer.consume();
-                    tx.run();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }, "Consumer-Thread");
-
-        producer.start();
-        consumer.start();
-
-        try {
-            producer.join();
-            consumer.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println("\n--- Testing: Deadlock-Free Transfers ---");
-        Account accA = new Account("Account A", 5000);
-        Account accB = new Account("Account B", 5000);
-
-        Thread t1 = new Thread(() -> {
-            try {
-                accA.transfer(accB, 500);
-            } catch (BankException e) {
-                System.out.println("Transfer A->B error: " + e.getMessage());
-            }
-        }, "Transfer-Thread-1");
-
-        Thread t2 = new Thread(() -> {
-            try {
-                accB.transfer(accA, 300);
-            } catch (BankException e) {
-                System.out.println("Transfer B->A error: " + e.getMessage());
-            }
-        }, "Transfer-Thread-2");
-
-        t1.start();
-        t2.start();
-
-        try {
-            t1.join();
-            t2.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println("Final Acc A Balance: ₹" + accA.getBalance());
-        System.out.println("Final Acc B Balance: ₹" + accB.getBalance());
-
-        System.out.println("\n--- Testing: AccountStore & Collections ---");
-        AccountStore store = new AccountStore();
+        System.out.println("\n--- Testing: Generic Repository & Reflection ---");
+        Repository<Account> accountRepo = new Repository<>();
         
-        Account cAcc1 = new Account("Rohan", 3000);
-        Account cAcc2 = new Account("Pooja", 7000);
-        Account cAcc3 = new Account("Amit", 1500);
+        Account rAcc1 = new Account("Kiran", 4000);
+        Account rAcc2 = new Account("Neha", 8500);
+        
+        accountRepo.saveAll(rAcc1, rAcc2);
 
-        store.add(cAcc1);
-        store.add(cAcc2);
-        store.add(cAcc3);
+        String searchId = rAcc1.getAccountNumber();
+        Account fetched = accountRepo.findById(searchId);
+        System.out.println("Fetched by ID (" + searchId + "): " + fetched);
 
-        System.out.println("Accounts sorted by balance:");
-        for (Account acc : store.sortedByBalance()) {
+        System.out.println("All accounts in Repository:");
+        for (Account acc : accountRepo.findAll()) {
             System.out.println(" -> " + acc);
         }
 
-        System.out.println("\n--- Testing: Persistence & Reporting ---");
-        Path stateFile = Path.of("bank_state.dat");
-        Path logsDir = Path.of("logs");
-        Path reportFile = Path.of("eod_report.txt");
-
-        Account[] accountsToSave = { accA, accB };
-        try {
-            StatePersister.save(accountsToSave, stateFile);
-        } catch (Exception e) {
-            System.out.println("Save error: " + e.getMessage());
-        }
-
-
-        try {
-            TransactionLog.append(logsDir.resolve("tx_day1.log"), "DEPOSIT: ₹500 to AC0001");
-            TransactionLog.append(logsDir.resolve("tx_day1.log"), "WITHDRAW: ₹200 from AC0002");
-        } catch (Exception e) {
-            System.out.println("Log error: " + e.getMessage());
-        }
-
-        try {
-            Account[] reloadedAccounts = StatePersister.load(stateFile);
-            System.out.println("Reloaded Accounts from file:");
-            for (Account acc : reloadedAccounts) {
-                System.out.println(" -> " + acc);
-            }
-        } catch (Exception e) {
-            System.out.println("Load error: " + e.getMessage());
-        }
-
-        try {
-            ReportGenerator.generateReport(logsDir, reportFile);
-        } catch (Exception e) {
-            System.out.println("Report error: " + e.getMessage());
-        }
-
-        System.out.println("\n--- All Automated Tests & Reporting Completed! ---");
-
+        Double[] balances = {4000.0, 8500.0, 1500.0};
+        System.out.println("Average Balance via generic method: ₹" + Repository.average(balances));
 
         Scanner scanner = new Scanner(System.in);
+        AccountStore store = new AccountStore();
+        store.add(rAcc1);
+        store.add(rAcc2);
+
         MenuOption choice = null;
 
         do {
@@ -179,6 +62,7 @@ public class MiniBank {
 
             if (scanner.hasNextInt()) {
                 int optionNum = scanner.nextInt();
+                scanner.nextLine();
                 
                 choice = switch (optionNum) {
                     case 1 -> MenuOption.OPEN_ACCOUNT;
@@ -194,17 +78,77 @@ public class MiniBank {
                     continue;
                 }
 
-                String msg = switch (choice) {
-                    case OPEN_ACCOUNT -> "Open Account feature.";
-                    case DEPOSIT -> "Deposit feature.";
-                    case WITHDRAW -> "Withdraw feature.";
-                    case TRANSFER -> "Transfer feature.";
-                    case EXIT -> "Thank you for using MiniBank!";
-                };
-                System.out.println(">> " + msg);
+                try {
+                    switch (choice) {
+                        case OPEN_ACCOUNT -> {
+                            System.out.print("Enter Owner Name: ");
+                            String name = scanner.nextLine();
+                            System.out.print("Enter Initial Deposit Amount (₹): ");
+                            long amount = scanner.nextLong();
+                            scanner.nextLine();
+
+                            Account newAcc = new Account(name, amount);
+                            store.add(newAcc);
+                            accountRepo.save(newAcc);
+                            System.out.println(">> Success! Account Created & Saved to Repository: " + newAcc);
+                        }
+                        case DEPOSIT -> {
+                            System.out.print("Enter Account Number (e.g., AC0001): ");
+                            String accNum = scanner.nextLine();
+                            Account target = store.get(accNum);
+                            if (target != null) {
+                                System.out.print("Enter Deposit Amount (₹): ");
+                                long amt = scanner.nextLong();
+                                scanner.nextLine();
+                                target.deposit(amt);
+                                System.out.println(">> Deposited successfully! New Balance: ₹" + target.getBalance());
+                            } else {
+                                System.out.println(">> Error: Account not found!");
+                            }
+                        }
+                        case WITHDRAW -> {
+                            System.out.print("Enter Account Number (e.g., AC0001): ");
+                            String accNum = scanner.nextLine();
+                            Account target = store.get(accNum);
+                            if (target != null) {
+                                System.out.print("Enter Withdrawal Amount (₹): ");
+                                long amt = scanner.nextLong();
+                                scanner.nextLine();
+                                target.withdraw(amt);
+                                System.out.println(">> Withdrawn successfully! Remaining Balance: ₹" + target.getBalance());
+                            } else {
+                                System.out.println(">> Error: Account not found!");
+                            }
+                        }
+                        case TRANSFER -> {
+                            System.out.print("Enter Source Account Number: ");
+                            String srcNum = scanner.nextLine();
+                            System.out.print("Enter Target Account Number: ");
+                            String tgtNum = scanner.nextLine();
+                            
+                            Account srcAcc = store.get(srcNum);
+                            Account tgtAcc = store.get(tgtNum);
+
+                            if (srcAcc != null && tgtAcc != null) {
+                                System.out.print("Enter Transfer Amount (₹): ");
+                                long amt = scanner.nextLong();
+                                scanner.nextLine();
+                                srcAcc.transfer(tgtAcc, amt);
+                                System.out.println(">> Transfer completed successfully!");
+                            } else {
+                                System.out.println(">> Error: One or both accounts not found!");
+                            }
+                        }
+                        case EXIT -> {
+                            System.out.println(">> Thank you for using MiniBank. Goodbye!");
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println(">> Transaction Error: " + e.getMessage());
+                }
 
             } else {
-                System.out.println("Invalid input!");
+                System.out.println("Invalid input! Please enter a number.");
                 scanner.next();
             }
         } while (choice != MenuOption.EXIT);
