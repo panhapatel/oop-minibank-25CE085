@@ -1,23 +1,17 @@
 package model;
 
-import java.util.Objects;
 import java.io.Serializable;
-import exception.BankException;
+import java.util.Objects;
 import exception.InsufficientFundsException;
 import exception.InvalidAmountException;
-import model.annotation.Id;
-import model.annotation.Positive;
+import exception.BankException;
 
-public class Account implements Transactable, InterestBearing, Comparable<Account> {
+public class Account implements Transactable, InterestBearing, Comparable<Account>, Serializable {
     private static final long serialVersionUID = 1L;
-    @Id
+
     private final String accountNumber;
-    
     private String ownerName;
-    
-    @Positive(message = "must be > 0")
     private long balance;
-    
     private boolean active;
 
     private static long accountCounter = 0;
@@ -60,21 +54,21 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
     }
 
 
-    public void transfer(Account targetAccount, long amount) throws BankException {
-        if (this.equals(targetAccount)) {
-            throw new BankException("Cannot transfer to the same account.");
+    public void transfer(Account target, long amount) throws BankException {
+        if (target == null) {
+            throw new BankException("Target account cannot be null.");
+        }
+        if (this.accountNumber.equals(target.accountNumber)) {
+            throw new BankException("Cannot transfer money to the same account.");
         }
 
-        
-        Account firstLock = this.accountNumber.compareTo(targetAccount.accountNumber) < 0 ? this : targetAccount;
-        Account secondLock = this.accountNumber.compareTo(targetAccount.accountNumber) < 0 ? targetAccount : this;
+        Account firstLock = this.accountNumber.compareTo(target.accountNumber) < 0 ? this : target;
+        Account secondLock = firstLock == this ? target : this;
 
         synchronized (firstLock) {
             synchronized (secondLock) {
-                System.out.println("Transferring ₹" + amount + " from " + this.accountNumber + " to " + targetAccount.accountNumber);
                 this.withdraw(amount);
-                targetAccount.deposit(amount);
-                System.out.println("Transfer successful!");
+                target.deposit(amount);
             }
         }
     }
@@ -85,26 +79,13 @@ public class Account implements Transactable, InterestBearing, Comparable<Accoun
     }
 
     @Override
-    public String toString() {
-        return accountNumber + " | " + ownerName + " | Balance: ₹" + balance;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Account account = (Account) o;
-        return Objects.equals(accountNumber, account.accountNumber);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(accountNumber);
-    }
-
-    @Override
     public int compareTo(Account other) {
         return this.accountNumber.compareTo(other.accountNumber);
+    }
+
+    @Override
+    public String toString() {
+        return accountNumber + " | " + ownerName + " | Balance: ₹" + balance;
     }
 
     public String getAccountNumber() { return accountNumber; }

@@ -2,12 +2,12 @@ import java.util.Scanner;
 import java.nio.file.Path;
 import model.Account;
 import exception.BankException;
-import util.BankResource;
 import util.TransactionProcessor;
 import util.TransactionBuffer;
 import util.StatePersister;
 import util.TransactionLog;
 import util.ReportGenerator;
+import util.AccountStore;
 
 record BankInfo(String name, String branch) {}
 
@@ -110,13 +110,27 @@ public class MiniBank {
         System.out.println("Final Acc A Balance: ₹" + accA.getBalance());
         System.out.println("Final Acc B Balance: ₹" + accB.getBalance());
 
+        System.out.println("\n--- Testing: AccountStore & Collections ---");
+        AccountStore store = new AccountStore();
+        
+        Account cAcc1 = new Account("Rohan", 3000);
+        Account cAcc2 = new Account("Pooja", 7000);
+        Account cAcc3 = new Account("Amit", 1500);
+
+        store.add(cAcc1);
+        store.add(cAcc2);
+        store.add(cAcc3);
+
+        System.out.println("Accounts sorted by balance:");
+        for (Account acc : store.sortedByBalance()) {
+            System.out.println(" -> " + acc);
+        }
 
         System.out.println("\n--- Testing: Persistence & Reporting ---");
         Path stateFile = Path.of("bank_state.dat");
         Path logsDir = Path.of("logs");
         Path reportFile = Path.of("eod_report.txt");
 
-   
         Account[] accountsToSave = { accA, accB };
         try {
             StatePersister.save(accountsToSave, stateFile);
@@ -124,7 +138,7 @@ public class MiniBank {
             System.out.println("Save error: " + e.getMessage());
         }
 
-   
+
         try {
             TransactionLog.append(logsDir.resolve("tx_day1.log"), "DEPOSIT: ₹500 to AC0001");
             TransactionLog.append(logsDir.resolve("tx_day1.log"), "WITHDRAW: ₹200 from AC0002");
@@ -149,6 +163,7 @@ public class MiniBank {
         }
 
         System.out.println("\n--- All Automated Tests & Reporting Completed! ---");
+
 
         Scanner scanner = new Scanner(System.in);
         MenuOption choice = null;
